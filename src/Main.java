@@ -211,11 +211,8 @@ public class Main
     {
         try
         {
-            PrintWriter out = new PrintWriter(new FileWriter(fileForPassword, false));
+            Files.write(Paths.get(filePathForPassword), encryptAndEncodeMessage(masterPassword));
 
-            out.write(masterPassword);
-
-            out.close();
         } catch (FileNotFoundException e)
         {
             System.out.println("File not found in save password to file function. This is a problem, because it should have already been read from.");
@@ -511,7 +508,7 @@ public class Main
         //Program actions
         while (true)
         {
-            System.out.println("Would do you want to do? Type 1 to retrieve a single account, 2 to retrieve a list of all accounts stored, 3 to store a new account, 4 to change master password, 5 to update an account, 6 to delete an account, or anything else to exit.");
+            System.out.println("Would do you want to do? Type 1 to retrieve a single account, \n" + "2 to retrieve a list of all accounts stored, \n" + "3 to store a new account, \n" + "4 to update an account, \n" + "5 to delete an account, \n" + "6 to change master password, \n" + "or anything else to exit.");
 
             String actions = input.next();
             switch (actions)
@@ -535,14 +532,18 @@ public class Main
                 case "4":
                     System.out.println("Update an account");
                     updateAccount(input);
+                    break;
+                //Delete Account
                 case "5":
                     System.out.println("Delete an account");
                     deleteAccount(input);
-                    //Change master password
+                    break;
+                //Change master password
                 case "6":
                     System.out.println("Changing master password");
                     changeMasterPassword(input, false);
-                    //Exit
+                    break;
+                //Exit
                 default:
                     return;
             }
