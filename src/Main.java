@@ -1,7 +1,8 @@
 import javax.crypto.*;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
-import java.io.*;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
@@ -24,8 +25,6 @@ public class Main
     private static String filePathForAccounts = "Files\\Accounts.dat";
     private static String filePathForIV = "Files\\IV.dat";
     private static String filePathForKey = "Files\\Key.dat";
-    private static File fileForPassword = new File(filePathForPassword);
-    private static File fileForAccounts = new File(filePathForAccounts);
 
     private static ArrayList<String[]> accounts = new ArrayList<>();
 
@@ -227,7 +226,6 @@ public class Main
     {
         try
         {
-            PrintWriter out = new PrintWriter(new FileWriter(fileForAccounts, false));
 
             StringBuilder fullListOfAccounts = new StringBuilder();
 
@@ -240,7 +238,6 @@ public class Main
 
             Files.write(Paths.get(filePathForAccounts), encryptAndEncodeMessage(fullListOfAccounts.toString()));
 
-            out.close();
         } catch (FileNotFoundException e)
         {
             System.out.println("File not found in save to file function. This is a problem, because it should have already been read from.");
@@ -307,12 +304,14 @@ public class Main
     {
         try
         {
-            PrintWriter writer = new PrintWriter(fileForAccounts);
-            writer.print("");
-            writer.close();
+            Files.write(Paths.get(filePathForAccounts), encryptAndEncodeMessage(""));
+
         } catch (FileNotFoundException e)
         {
             System.out.println("File not found exception. This shouldn't happen");
+            e.printStackTrace();
+        } catch (IOException e)
+        {
             e.printStackTrace();
         }
     }
