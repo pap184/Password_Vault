@@ -33,6 +33,19 @@ public class Main
     private static Cipher decryptionCipher;
     private static Cipher encryptionCipher;
 
+    //TODO master password should be salted and hashed.
+    //TODO Securely have way to change master password. (PASSWORD BASED ENCRYPTION)
+    //TODO Session hijacking - Enter master password to enter new account, search for account, or share account.
+    //TODO Have single key to encrypt all usernames and passwords - will be stored in a separate file. Salt encrpyted text with the account, but the entry in the file should be just unencrypted account and cipher text
+    //TODO Dont echo typing master password in terminal
+    //TODO Ensure sensitive information does not persist in memory. Use base64 encoder to pass around byte arrays
+    //TODO Error messages
+    //TODO Secure random
+    //TODO In order to share a password, you will prompt the user for the name of a certificate for the recipient.  Use a local copy of CACert to verify the certificate, and hybrid encryption to encrypt the password for sending.
+
+    /**
+     * A helper function to generate a private key if a private key does not already exist.
+     */
     private static void createPrivateKey()
     {
         try
@@ -65,6 +78,9 @@ public class Main
         }
     }
 
+    /**
+     * If a private key already exists, get them from the file system and initialize the ciphers that will be used.
+     */
     private static void initPrivateKeyAndIV()
     {
         try
@@ -93,6 +109,13 @@ public class Main
         }
     }
 
+    /**
+     * Encrypt and encode a given message. This will use the already initialized ciphers to encrypt the message.
+     *
+     * @param message The string that should be encrypted.
+     * @return Byte[] after the message was encrypted and then encoded using Base64 standard
+     */
+    //TODO Password based encryption
     private static byte[] encryptAndEncodeMessage(String message)
     {
         byte[] encryptedAndEncoded = new byte[0];
@@ -108,6 +131,13 @@ public class Main
         return encryptedAndEncoded;
     }
 
+    /**
+     * Decode and Decrypt a byte array into a string using the previously initialized ciphers
+     *
+     * @param byteArrayOfMessage The byte array that was encoded using Base64, and encrypted with our keys
+     * @return The string that was returned by our ciphers
+     */
+    //TODO Password based encryption
     private static String decryptAndDecode(byte[] byteArrayOfMessage)
     {
         try
@@ -122,17 +152,27 @@ public class Main
         return "";
     }
 
+    /**
+     * Create an empty file that will contain the accounts information,
+     * Should only be called if the file does not yet exist, as it will overwrite the existing file erasing any information in it currently.
+     */
     private static void createAccountsFile()
     {
         try
         {
-            Files.write(Paths.get(filePathForAccounts), encryptAndEncodeMessage(""));
+            Files.write(Paths.get(filePathForAccounts), Base64.getEncoder().encode("".getBytes()));
         } catch (IOException e)
         {
             e.printStackTrace();
         }
     }
 
+    /**
+     * Create a file that will contain the password. The password saved should be encrypted and encoded so you can't just open the file to see what the password is.
+     * This should only be run if the file does not yet exist, as it will overwrite the existing file, resetting the password to the default.
+     *
+     * @return String of what the password defaults too, in case it is different.
+     */
     private static String createPasswordFile()
     {
         try
@@ -146,6 +186,10 @@ public class Main
         return defaultPassword;
     }
 
+    /**
+     * Read all of the accounts off of the file and into a string. Because this file is encrypted with our private key this has to be decoded and decrypted first.
+     * Calls helper function to parse the single string and separate into items.
+     */
     private static void readAccountsFromFile()
     {
         String contents;
@@ -166,8 +210,16 @@ public class Main
         emptyFile();
     }
 
+    /**
+     * Parse string, and separate this string into items of usernames and passwords for accounts.
+     * Create individual string[] to hold each information for each account
+     *
+     * @param content Full contexts from accounts file
+     */
+    //TODO Information should not be kept in system memory, instead should be kept on file and file should be parsed.
     private static void populateArrayFromStringHelper(String content)
     {
+
         //Fill array list with all of the information from the file.
         int indexOfAccounts = 0;
 
@@ -184,6 +236,23 @@ public class Main
         }
     }
 
+    /**
+     * Return specific account information. This will prompt user for their password as that will be required as part of the decryption scheme to find the username and password.
+     *
+     * @param token The account to find
+     * @return A formatted string containing the account information
+     */
+//    private static String returnAccountInfo(String token)
+//    {
+//
+//    }
+
+    /**
+     * Return master password that is currently saved.
+     *
+     * @return String of password that is saved
+     */
+    //TODO This is really dumb, get rid of this
     private static String pullMasterPassword()
     {
         try
@@ -206,6 +275,12 @@ public class Main
         return null;
     }
 
+    /**
+     * Save master password to file.
+     *
+     * @param masterPassword String that the password should be changed too
+     */
+    //TODO Password based encryption
     private static void updateMasterPassword(String masterPassword)
     {
         try
@@ -222,6 +297,12 @@ public class Main
         }
     }
 
+    /**
+     * Save all accounts that are saved in to account arraylist to the file.
+     * All of accounts are appended into a long single string, with each account on a seperate line
+     * This string is then encrypted+encoded and written to the file.
+     */
+    //TODO Accounts should be kept on the file permanently.
     private static void saveAccountsToFile()
     {
         try
@@ -248,48 +329,67 @@ public class Main
         }
     }
 
+    /**
+     * Generate a secure random string. This random string is
+     *
+     * @param lengthOfPassword length of password to generate
+     * @return The password that was securely generated.
+     */
+    //TODO Use secure random
+    //TODO Should not be kept in memory
     private static String generateRandomPass(int lengthOfPassword)
     {
-        //Create an array of Random Bytes, with length 256.
-        //The length of 256 is arbitrary, but its an easy round number so why not.
+        /*
+        Create an array of Random Bytes, with length 256.
+        The length of 256 is arbitrary, but its an easy round number so why not.
+        */
         byte[] arrayOfRandomBytes = new byte[256];
         new Random().nextBytes(arrayOfRandomBytes);
 
         StringBuilder stringOfRandomCharacters = new StringBuilder();
 
-        //For loop to walk through the array of random bytes.
-        //This loop is broken using a break statement, as i should never actually hit the end of the array,
-        //However this is the easiest way to handle an index so this is staying.
+        /*
+        For loop to walk through the array of random bytes.
+        This loop is broken using a break statement, as i should never actually hit the end of the array,
+        However this is the easiest way to handle an index so this is staying.
+        */
         for (int i = 0; i < arrayOfRandomBytes.length; i++)
         {
-            //For now we should only accept the character into a string if the character is an accepted character.
-            //This includes numbers 0-9, lower case and upper case alphabet. No special characters.
+            /*
+            For now we should only accept the character into a string if the character is an accepted character.
+            This includes numbers 0-9, lower case and upper case alphabet, as well as '!' and '.'. No other special characters.
 
-            //If the random byte is a positive integer, then continue testing the number.
+            If the random byte is a positive integer, then continue testing the number.
+            Use regex to check if the byte value casts to an accepted value.
+            First cast the byte to a character using the ascii value of the character,
+             then create a string out of the character and test the string using regex
+            */
+
             if (arrayOfRandomBytes[i] > 0)
             {
-                //Use regex to check if the byte value casts to an accepted value.
-                //First cast the byte to a character using the ascii value of the character,
-                // then create a string out of the character and test the string using regex
-                if (String.valueOf((char) arrayOfRandomBytes[i]).matches("[0-9a-zA-Z]"))
+                if (String.valueOf((char) arrayOfRandomBytes[i]).matches("[0-9a-zA-Z!.]"))
                 {
                     //If the character is accepted, append it to the string.
                     stringOfRandomCharacters.append((char) arrayOfRandomBytes[i]);
                 }
             }
 
-            //These are our checks to see if we are done.
-            //Since not every character is going to be accepted, we can't just look at the step of the for loop.
-            //Instead we have to wait until there are actually enough characters in the string
-            //Once this happens, break out of the loop.
+            /*
+            These are our checks to see if we are done.
+            Since not every character is going to be accepted, we can't just look at the step of the for loop.
+            Instead we have to wait until there are actually enough characters in the string
+            Once this happens, break out of the loop.
+            */
             if (stringOfRandomCharacters.length() == lengthOfPassword)
             {
                 break;
             }
 
-            //Because we are using a random array of bytes and not every character will be accepted, this algorithm has a theoretical running time
-            //of infinity. In practice this likely won't happen, but it is possible that we could run out of bytes in the array before we have enough characters.
-            //If this ever happens because we get unlucky and none of the bytes are acceptable, scramble the array again, and start the for loop over.
+            /*
+            Because we are using a random array of bytes and not every character will be accepted, this algorithm has a theoretical running time
+            of infinity. In practice this likely won't happen, but it is possible that we could run out of bytes in the array before we have enough characters.
+            If this ever happens because we get unlucky and none of the bytes are acceptable, scramble the array again, and start the for loop over.
+            */
             if (i == arrayOfRandomBytes.length - 1)
             {
                 i = 0;
@@ -300,6 +400,11 @@ public class Main
         return stringOfRandomCharacters.toString();
     }
 
+    /**
+     * Clear account file
+     * I dont know why this exists anymore
+     */
+    //TODO remove this too
     private static void emptyFile()
     {
         try
@@ -316,6 +421,13 @@ public class Main
         }
     }
 
+    /**
+     * Verify master password is correct
+     *
+     * @param input scanner that the user will type in the password with
+     */
+    //TODO Information should not persist in memory
+    //TODO This will need to reauthenticate every time
     private static void logIn(Scanner input)
     {
         String masterPassword = pullMasterPassword();
@@ -330,8 +442,7 @@ public class Main
             if (userPass.equals(masterPassword))
             {
                 break;
-            }
-            else
+            } else
             {
                 System.out.println("Error!");
                 System.out.println("Please enter the Master Password.");
@@ -346,6 +457,13 @@ public class Main
         }
     }
 
+    /**
+     * Allow the master password to be changed securely
+     *
+     * @param input        Scanner the user inputs too
+     * @param forcedChange If the user has to change it
+     */
+    //TODO Password based encryption, will need to interact with accounts file if password changes
     private static void changeMasterPassword(Scanner input, boolean forcedChange)
     {
         //Prompt user to change password.
@@ -362,8 +480,7 @@ public class Main
                 updateMasterPassword(input.next());
                 System.out.println("New Master Password saved.");
             }
-        }
-        else
+        } else
         {
             System.out.println("Enter new Master Password.");
             updateMasterPassword(input.next());
@@ -371,6 +488,11 @@ public class Main
         }
     }
 
+    /**
+     * Find account index in the accounts arraylist
+     * @param accountWeAreLookingFor The name of the account searched for
+     * @return The index the account exists at
+     */
     private static int findAccountIndexFromUserInput(String accountWeAreLookingFor)
     {
         for (int i = 0; i < accounts.size(); i++)
@@ -386,6 +508,12 @@ public class Main
         return -1;
     }
 
+    /**
+     * Pull information about a single account
+     *
+     * @param input Scanner that the user will type in their account they want
+     */
+    //TODO Account information persists on file now
     private static void retrieveSingleAccountInfoFromArray(Scanner input)
     {
         System.out.println("Please enter the name of the account that you want to access");
@@ -399,6 +527,10 @@ public class Main
         }
     }
 
+    /**
+     * Print out all of the information about all of the accounts.
+     */
+    //TODO Account information from file
     private static void retrieveAllAccountsFromArray()
     {
         for (int i = 0; i < accounts.size(); i++)
@@ -407,6 +539,12 @@ public class Main
         }
     }
 
+    /**
+     * Print out the information about the actual account.
+     *
+     * @param accountIndex Index that the account exists at.
+     */
+    //TODO Account information exists in file system
     private static void printAccountInfo(int accountIndex)
     {
         System.out.println("Account name: " + accounts.get(accountIndex)[ACCOUNT]);
@@ -415,11 +553,23 @@ public class Main
         System.out.println();
     }
 
+    /**
+     * get the specific string[] that contains information about the account
+     *
+     * @param accountIndex index that the account exists in
+     * @return string[] that the account information is in
+     */
+    //TODO This is dumb too. Get rid of this
     private static String[] getAccount(int accountIndex)
     {
         return accounts.get(accountIndex);
     }
 
+    /**
+     * Create new account that will be saved in the file.
+     * @param input Scanner the user inputs their choices into
+     */
+    //TODO Accounts on file
     private static void storeNewAccount(Scanner input)
     {
         String[] newAccountInformation = new String[3];
@@ -437,8 +587,7 @@ public class Main
         {
             System.out.println("Enter custom password");
             newAccountInformation[PASSWORD] = input.next();
-        }
-        else
+        } else
         {
             System.out.println("Generating a new password");
             newAccountInformation[PASSWORD] = generateRandomPass(10);
@@ -452,6 +601,11 @@ public class Main
         saveAccountsToFile();
     }
 
+    /**
+     * Allow an account to have its information changed.
+     * @param input scanner for user input
+     */
+    //TODO Accounts on file.
     private static void updateAccount(Scanner input)
     {
         System.out.println("Please enter in the name of the account you are looking for. ");
@@ -481,6 +635,11 @@ public class Main
         saveAccountsToFile();
     }
 
+    /**
+     * Allow user to remove account.
+     * @param input Scanner for user input
+     */
+    //TODO Accounts on file.
     private static void deleteAccount(Scanner input)
     {
         System.out.println("Please enter in the name of the account you are looking for. ");
@@ -502,6 +661,10 @@ public class Main
         saveAccountsToFile();
     }
 
+    /**
+     * Main loop that the program exists in. This loops and allows the user many choices to allow the user to interact with the program.
+     * @param input scanner for user input
+     */
     private static void mainLoop(Scanner input)
     {
         //Program actions
@@ -551,6 +714,7 @@ public class Main
         }
     }
 
+    // Initialize and launch program
     public static void main(String[] args)
     {
         //Scanner used to parse user input
