@@ -1,7 +1,9 @@
 import javax.crypto.*;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
+import java.io.BufferedReader;
 import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -10,7 +12,11 @@ import java.nio.file.Paths;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
-import java.util.*;
+import java.security.SecureRandom;
+import java.util.Base64;
+import java.util.Comparator;
+import java.util.Random;
+import java.util.Scanner;
 
 //Members: Alex Hover Courtney Kaminski, Pavan Patel
 
@@ -25,8 +31,6 @@ public class Main
     private static String filePathForAccounts = "Files\\Accounts.dat";
     private static String filePathForIV = "Files\\IV.dat";
     private static String filePathForKey = "Files\\Key.dat";
-
-    private static ArrayList<String[]> accounts = new ArrayList<>();
 
     private static SecretKey aesKey;
     private static IvParameterSpec iv;
@@ -46,6 +50,7 @@ public class Main
     /**
      * A helper function to generate a private key if a private key does not already exist.
      */
+    //TODO Password based encryption
     private static void createPrivateKey()
     {
         try
@@ -112,7 +117,7 @@ public class Main
     /**
      * Encrypt and encode a given message. This will use the already initialized ciphers to encrypt the message.
      *
-     * @param message The string that should be encrypted.
+     * @param message The string that should be encrypted. The format should be 'salt:Username Password' where the salt is the account name.
      * @return Byte[] after the message was encrypted and then encoded using Base64 standard
      */
     //TODO Password based encryption
@@ -134,11 +139,11 @@ public class Main
     /**
      * Decode and Decrypt a byte array into a string using the previously initialized ciphers
      *
-     * @param byteArrayOfMessage The byte array that was encoded using Base64, and encrypted with our keys
+     * @param message Format is as follows. 'salt:[base64 encoded encryption]'. The salt is in front, followed by a semicolon, and then the message that was encrypted.
      * @return The string that was returned by our ciphers
      */
     //TODO Password based encryption
-    private static String decryptAndDecode(byte[] byteArrayOfMessage)
+    private static String decryptAndDecodeAccounts(String message)
     {
         try
         {
@@ -173,6 +178,7 @@ public class Main
      *
      * @return String of what the password defaults too, in case it is different.
      */
+    //TODO Password should be hashed
     private static String createPasswordFile()
     {
         try
@@ -187,65 +193,49 @@ public class Main
     }
 
     /**
-     * Read all of the accounts off of the file and into a string. Because this file is encrypted with our private key this has to be decoded and decrypted first.
-     * Calls helper function to parse the single string and separate into items.
+     * Will compare the password that was passed into the method with the password that is hashed and stored on the file.
+     * @param passwordEntered base64 encoding of the password that was entered.
+     * @return boolean for if the password matches
      */
-    private static void readAccountsFromFile()
+    //TODO write this
+    //it needs to hash and check and yeah man
+    private static boolean confirmPassword(byte[] passwordEntered)
     {
-        String contents;
-
-        try
-        {
-            contents = decryptAndDecode(Files.readAllBytes(Paths.get(filePathForAccounts)));
-
-            populateArrayFromStringHelper(contents);
-        } catch (NoSuchFileException e)
-        {
-            System.out.println("File not found exception when trying to fill the accounts array.");
-        } catch (IOException e)
-        {
-            e.printStackTrace();
-        }
-
-        emptyFile();
-    }
-
-    /**
-     * Parse string, and separate this string into items of usernames and passwords for accounts.
-     * Create individual string[] to hold each information for each account
-     *
-     * @param content Full contexts from accounts file
-     */
-    //TODO Information should not be kept in system memory, instead should be kept on file and file should be parsed.
-    private static void populateArrayFromStringHelper(String content)
-    {
-
-        //Fill array list with all of the information from the file.
-        int indexOfAccounts = 0;
-
-        for (int i = 0; i < content.length(); i++)
-        {
-            int indexBetweenAccountAndUsername = content.indexOf(' ', i);
-            int indexBetweenUsernameAndPassword = content.indexOf(' ', indexBetweenAccountAndUsername + 1);
-            int indexAtEndOfPassword = content.indexOf('\n', indexBetweenUsernameAndPassword);
-
-            accounts.add(indexOfAccounts, new String[]{content.substring(i, indexBetweenAccountAndUsername), content.substring(indexBetweenAccountAndUsername + 1, indexBetweenUsernameAndPassword), content.substring(indexBetweenUsernameAndPassword + 1, indexAtEndOfPassword)});
-
-            indexOfAccounts++;
-            i = indexAtEndOfPassword;
-        }
+        return true;
     }
 
     /**
      * Return specific account information. This will prompt user for their password as that will be required as part of the decryption scheme to find the username and password.
      *
-     * @param token The account to find
+     * @param accountWeAreLookingFor The account to find
      * @return A formatted string containing the account information
      */
-//    private static String returnAccountInfo(String token)
-//    {
-//
-//    }
+    private static String returnAccountInfo(String accountWeAreLookingFor)
+    {
+        try
+        {
+            BufferedReader accountsFile = new BufferedReader(new FileReader(filePathForAccounts));
+
+            String line;
+            while ((line = accountsFile.readLine()) != null)
+            {
+                if (line.contains(accountWeAreLookingFor))
+                {
+
+                    return line.substring(0, line.indexOf(' ')) + decryptAndDecodeAccounts(line);
+                }
+            }
+
+        } catch (FileNotFoundException e)
+        {
+            e.printStackTrace();
+        } catch (IOException e)
+        {
+            e.printStackTrace();
+        }
+
+        return "Account could not be found.";
+    }
 
     /**
      * Return master password that is currently saved.
@@ -303,19 +293,11 @@ public class Main
      * This string is then encrypted+encoded and written to the file.
      */
     //TODO Accounts should be kept on the file permanently.
-    private static void saveAccountsToFile()
+    private static void saveNewAccountToFile(String account, String username, String password)
     {
         try
         {
 
-            StringBuilder fullListOfAccounts = new StringBuilder();
-
-            //Write string array, with spaces between them.
-            for (String[] account : accounts)
-            {
-                fullListOfAccounts.append(account[ACCOUNT]).append(" ").append(account[USERNAME]).append(" ").append(account[PASSWORD]);
-                fullListOfAccounts.append("\n");
-            }
 
             Files.write(Paths.get(filePathForAccounts), encryptAndEncodeMessage(fullListOfAccounts.toString()));
 
@@ -335,7 +317,6 @@ public class Main
      * @param lengthOfPassword length of password to generate
      * @return The password that was securely generated.
      */
-    //TODO Use secure random
     //TODO Should not be kept in memory
     private static String generateRandomPass(int lengthOfPassword)
     {
@@ -344,7 +325,7 @@ public class Main
         The length of 256 is arbitrary, but its an easy round number so why not.
         */
         byte[] arrayOfRandomBytes = new byte[256];
-        new Random().nextBytes(arrayOfRandomBytes);
+        new SecureRandom().nextBytes(arrayOfRandomBytes);
 
         StringBuilder stringOfRandomCharacters = new StringBuilder();
 
