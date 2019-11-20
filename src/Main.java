@@ -1,8 +1,10 @@
-import javax.crypto.*;
+import javax.crypto.Cipher;
+import javax.crypto.KeyGenerator;
+import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.*;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Paths;
@@ -17,9 +19,6 @@ import java.util.Scanner;
 public class Main
 {
     private static final String defaultPassword = "";
-    private static final int ACCOUNT = 0;
-    private static final int USERNAME = 1;
-    private static final int PASSWORD = 2;
 
     private static String filePathForPassword = "Files\\Password.dat";
     private static String filePathForAccounts = "Files\\Accounts.dat";
@@ -40,6 +39,8 @@ public class Main
     //TODO Error messages
     //TODO Secure random
     //TODO In order to share a password, you will prompt the user for the name of a certificate for the recipient.  Use a local copy of CACert to verify the certificate, and hybrid encryption to encrypt the password for sending.
+
+    //TODO Use sha to hash that, and finish making the password file, then check the change password method to make sure that makes sense still
 
     /**
      * A helper function to generate a private key if a private key does not already exist.
@@ -114,7 +115,6 @@ public class Main
      * @param base64EncodedPassword Base64 encoded version of the password
      * @return The final result of salting and hashing the password.
      */
-    //TODO Make this.
     private static byte[] saltAndHashPassword(byte[] base64EncodedPassword, int salt)
     {
         //First prepend the password with the salt.
@@ -132,8 +132,15 @@ public class Main
             }
         }
 
-        MessageDigest md
-        //TODO Use sha to hash that, and finish making the password file, then check the change password method to make sure that makes sense still
+        try
+        {
+            return MessageDigest.getInstance("SHA-256").digest(saltedPassword);
+        } catch (NoSuchAlgorithmException e)
+        {
+            System.out.println("Unexpected error occurred");
+        }
+
+        return null;
     }
 
     /**
@@ -143,7 +150,6 @@ public class Main
      * <p>
      * To determine what the password is, it must securely prompt the user to input the password
      */
-    //TODO Add the masked input thing into this
     //By default the default password is blank, and the user MUST change this before entering in new accounts, so this should be fine
     private static void createPasswordFile()
     {
@@ -153,70 +159,17 @@ public class Main
 
             byte[] password = Base64.getEncoder().encode(defaultPassword.getBytes());
 
-            int salt = new SecureRandom().nextInt();
+            int salt = new SecureRandom().nextInt(256);
 
             writer.write(salt);
-
             writer.write(Arrays.toString(saltAndHashPassword(password, salt)));
 
+            //Delete the accounts file if it made it this far, because you can't access any of these accounts any more anyway
             Files.delete(Paths.get(filePathForAccounts));
         } catch (IOException e)
         {
             e.printStackTrace();
         }
-    }
-
-    /**
-     * Encrypt and encode a given message. This will use the already initialized ciphers to encrypt the message.
-     *
-     * @param message The string that should be encrypted. The format should be 'salt:Username Password' where the salt is the account name.
-     * @return byte[] after the message was encrypted and then encoded using Base64 standard. This is only the cipher text
-     */
-    //TODO Password based encryption
-    private static byte[] encryptAndEncodeAccountInformation(String message)
-    {
-        byte[] encryptedAndEncoded = new byte[0];
-        try
-        {
-            //message is already formatted in the salted and correct way. All we need is the password based encryption
-
-            encryptedAndEncoded = encryptionCipher.doFinal(message.getBytes(StandardCharsets.UTF_8));
-            encryptedAndEncoded = Base64.getEncoder().encode(encryptedAndEncoded);
-        } catch (BadPaddingException | IllegalBlockSizeException e)
-        {
-            e.printStackTrace();
-        }
-
-        return encryptedAndEncoded;
-    }
-
-    /**
-     * Decode and Decrypt a byte array into a string using the previously initialized ciphers
-     *
-     * @param message Format is as follows. 'salt:[base64 encoded encryption]'. The salt is in front, followed by a semicolon, and then the message that was encrypted.
-     * @return The string that was contained fully in the cipher. Should be returned in format 'account:username password'
-     */
-    //TODO Password based encryption
-    private static String decryptAndDecodeAccounts(String message)
-    {
-        try
-        {
-            //Break apart the message into the different parts
-            String messageToBeDecrypted = message.substring(message.indexOf(':') + 1);
-
-            byte[] decodedMessageToBeDecrypted = Base64.getDecoder().decode(messageToBeDecrypted.getBytes());
-
-            //TODO Decrypt it correctly - Password based encryption
-            String decryptedInformation = Arrays.toString(decryptionCipher.doFinal(decodedMessageToBeDecrypted));
-
-            //Should be
-            return decryptedInformation;
-
-        } catch (BadPaddingException | IllegalBlockSizeException e)
-        {
-            e.printStackTrace();
-        }
-        return "";
     }
 
     /**
@@ -236,6 +189,60 @@ public class Main
     }
 
     /**
+     * Encrypt and encode a given message. This will use the already initialized ciphers to encrypt the message.
+     *
+     * @param message The string that should be encrypted. The format should be 'salt:Username Password' where the salt is the account name.
+     * @return byte[] after the message was encrypted and then encoded using Base64 standard. This is only the cipher text
+     */
+    //TODO Password based encryption
+    private static byte[] encryptAndEncodeAccountInformation(String message, byte[] password)
+    {
+//        byte[] encryptedAndEncoded = new byte[0];
+//        try
+//        {
+//            //message is already formatted in the salted and correct way. All we need is the password based encryption
+//
+//            encryptedAndEncoded = encryptionCipher.doFinal(message.getBytes(StandardCharsets.UTF_8));
+//            encryptedAndEncoded = Base64.getEncoder().encode(encryptedAndEncoded);
+//        } catch (BadPaddingException | IllegalBlockSizeException e)
+//        {
+//            e.printStackTrace();
+//        }
+//
+//        return encryptedAndEncoded;
+        return new byte[0];
+    }
+
+    /**
+     * Decode and Decrypt a byte array into a string using the previously initialized ciphers
+     *
+     * @param message Format is as follows. 'salt:[base64 encoded encryption]'. The salt is in front, followed by a semicolon, and then the message that was encrypted.
+     * @return The string that was contained fully in the cipher. Should be returned in format 'account:username password'
+     */
+    //TODO Password based encryption
+    private static String decryptAndDecodeAccounts(String message, byte[] password)
+    {
+//        try
+//        {
+//            //Break apart the message into the different parts
+//            String messageToBeDecrypted = message.substring(message.indexOf(':') + 1);
+//
+//            byte[] decodedMessageToBeDecrypted = Base64.getDecoder().decode(messageToBeDecrypted.getBytes());
+//
+//            //TODO Decrypt it correctly - Password based encryption
+//            String decryptedInformation = Arrays.toString(decryptionCipher.doFinal(decodedMessageToBeDecrypted));
+//
+//            //Should be
+//            return decryptedInformation;
+//
+//        } catch (BadPaddingException | IllegalBlockSizeException e)
+//        {
+//            e.printStackTrace();
+//        }
+        return "";
+    }
+
+    /**
      * Will compare the password that was passed into the method with the password that is hashed and stored on the file.
      * The method should prompt the user to input the master password, and then should mask the password as it is being typed in
      *
@@ -248,19 +255,22 @@ public class Main
     //Maybe make it self destruct and delete password file, making the accounts unrecoverable if there are too many guesses, to add to security? - I dont care, just an idea
     //Who ever finishes this, its your call
     //I do know, that because of IO errors it does have to fail closed, not open so be aware of that vulnerability
-    private static boolean confirmPassword(String password) throws FileNotFoundException
+    private static boolean confirmPassword(byte[] password) throws FileNotFoundException
     {
+        BufferedReader reader = new BufferedReader(new FileReader(filePathForPassword));
         try
         {
             //If the password file is not found, then it will throw an error back.
             //This should only be thrown if this is called by the "logInAtProgramLaunch" as it should be impossible to pass that method without the file existing
-            BufferedReader reader = new BufferedReader(new FileReader(filePathForPassword));
+
+            //Skip salt line of file.
+            reader.readLine();
 
             //Pull hash off of the file to compare.
             byte[] hashedVersionOfSavedPasswordOnFile = Base64.getEncoder().encode(reader.readLine().getBytes());
 
 
-            byte[] enteredPassword = Base64.getEncoder().encode(password.getBytes());
+            byte[] enteredPassword = Base64.getEncoder().encode(password);
 
             if (Arrays.equals(enteredPassword, hashedVersionOfSavedPasswordOnFile))
             {
@@ -274,31 +284,87 @@ public class Main
         return false;
     }
 
-    private static boolean confirmPassword() throws FileNotFoundException
+    //TODO After getting this return value make sure this array is cleared.
+
+    /**
+     * Prompts user to input a password. This will be matched to the password that is salted and hashed already saved on the file system.
+     *
+     * @return byte[] of the password that is correct. THIS WILL NEED TO BE CLEARED OUT AFTER USE
+     * @throws FileNotFoundException Throws error is password file is removed. At this point, call method to create the password file.
+     */
+    private static byte[] confirmPassword() throws FileNotFoundException
     {
+        Console console = System.console();
         for (int i = 0; i < 3; i++)
         {
+            if (!Files.exists(Paths.get(filePathForPassword)))
+            {
+                throw new FileNotFoundException();
+            }
+
             System.out.println("Please enter in the master password");
-            if (confirmPassword(new Scanner(System.in).next()))
-                return true;
+            char[] password = console.readPassword();
+
+            //Copy all of the bytes of characters into the byte array, act as a converter
+            byte[] byteArrayOfPassword = new byte[password.length];
+            for (int j = 0; j < byteArrayOfPassword.length; j++)
+            {
+                byteArrayOfPassword[j] = (byte) password[j];
+            }
+
+            //Clear contents of password array.
+            Arrays.fill(password, '0');
+
+            if (confirmPassword(byteArrayOfPassword))
+            {
+                return byteArrayOfPassword;
+            }
             System.out.println("Not correct");
+
+            Arrays.fill(byteArrayOfPassword, (byte) 0);
         }
 
         System.out.println("Password not authenticated");
-        return false;
+        return null;
     }
 
     /**
      * Print out all of the information about all of the accounts.
      */
-    //TODO Account information from file
-    private static void retrieveAllAccountsFromArray()
+    private static void retrieveAllAccounts()
     {
-        Scanner input = new Scanner(System.in);
+        try
+        {
+            BufferedReader reader = new BufferedReader(new FileReader(filePathForAccounts));
 
+            byte[] password = null;
 
+            try
+            {
+                password = confirmPassword();
+            } catch (FileNotFoundException e)
+            {
+                System.out.println("Unexpected error occurred");
+            }
+
+            if (password != null)
+            {
+                String line;
+                while ((line = reader.readLine()) != null)
+                {
+                    printAccountInfo(decryptAndDecodeAccounts(line, password));
+                    System.out.println();
+                }
+            }
+        } catch (FileNotFoundException e)
+        {
+            System.out.println("Accounts file not found");
+            createAccountsFile();
+        } catch (IOException e)
+        {
+            System.out.println("Unexpected error occurred");
+        }
     }
-
 
     /**
      * Return specific account information. This will prompt user for their password as that will be required as part of the decryption scheme to find the username and password.
@@ -310,7 +376,9 @@ public class Main
     {
         try
         {
-            if (confirmPassword())
+            byte[] password = confirmPassword();
+
+            if (password != null)
             {
                 try
                 {
@@ -321,7 +389,7 @@ public class Main
                     {
                         if (line.contains(accountWeAreLookingFor))
                         {
-                            return decryptAndDecodeAccounts(line);
+                            return decryptAndDecodeAccounts(line, password);
                         }
                     }
                 } catch (FileNotFoundException e) //Not find account file
@@ -353,13 +421,14 @@ public class Main
     {
         try
         {
-            if (confirmPassword())
+            byte[] masterPass = confirmPassword();
+            if (masterPass != null)
             {
                 try
                 {
                     BufferedWriter writer = new BufferedWriter(new FileWriter(filePathForAccounts, true));
 
-                    writer.write(account + ":" + Arrays.toString(encryptAndEncodeAccountInformation(account + ":" + username + " " + password)));
+                    writer.write(account + ":" + Arrays.toString(encryptAndEncodeAccountInformation(account + ":" + username + " " + password, masterPass)));
                 } catch (FileNotFoundException e) //Not find account file
                 {
                     createAccountsFile();
@@ -466,24 +535,31 @@ public class Main
      * This is run if there already exists a password, and there may exist accounts on the file using that password to encrypt them.
      * If there already are accounts saved, then it will need to update and change all of those accounts to be saved with the new passwords
      */
-    //TODO Password based encryption,
-    // will need to interact with accounts file if password changes
-    //TODO Mask the user input
     private static void changeMasterPassword()
     {
         System.out.println("Enter in the old password");
 
-        //TODO mask input for old password
-        byte[] oldPassword = defaultPassword.getBytes();
+        Console console = System.console();
+
+        char[] oldPasswordCharArray = console.readPassword();
+
+        //Copy all of the bytes of characters into the byte array, act as a converter
+        //This also will wipe the previous password char array
+        byte[] oldPasswordByteArray = new byte[oldPasswordCharArray.length];
+        for (int j = 0; j < oldPasswordByteArray.length; j++)
+        {
+            oldPasswordByteArray[j] = (byte) oldPasswordCharArray[j];
+            oldPasswordCharArray[j] = 'p';
+        }
 
         //Check the old password to see if it matches.
         try
         {
-            if (!Arrays.equals(oldPassword, Files.readString(Paths.get(filePathForPassword)).getBytes()))
+            if (!confirmPassword(oldPasswordByteArray))
             {
-                System.out.println("password does not match");
+                System.out.println("Password does not match");
+                return;
             }
-            //Password does not match so do something about that
 
         } catch (IOException e)
         {
@@ -492,36 +568,45 @@ public class Main
 
 
         System.out.println("Enter new Master Password.");
-
         //Allow the password to be entered in while masked
-        //for now, im going to use just the default. This needs changed
-        byte[] inputPassword = defaultPassword.getBytes();
+        char[] inputPasswordCharArray1 = console.readPassword();
 
         System.out.println("Reenter password to confirm");
+        char[] inputPasswordCharArray2 = console.readPassword();
 
-        //TODO new password entry that is masked
-
-        //check if the input password matches.
-        if (!Arrays.equals(inputPassword, defaultPassword.getBytes()))
+        if (!Arrays.equals(inputPasswordCharArray1, inputPasswordCharArray2))
         {
-            System.out.println("Passwords do not match");
-            changeMasterPassword();
+            System.out.println("These did not match");
         }
 
-        byte[] hashedVersionOfPassword = saltAndHashPassword(inputPassword);
+        //Use the new password to continue
+
+        //Copy all of the bytes of characters into the byte array, act as a converter
+        //This also will wipe the previous password char array
+        byte[] newPasswordByteArray = new byte[oldPasswordCharArray.length];
+        for (int j = 0; j < oldPasswordByteArray.length; j++)
+        {
+            newPasswordByteArray[j] = (byte) inputPasswordCharArray1[j];
+            inputPasswordCharArray1[j] = 'p';
+            inputPasswordCharArray2[j] = 'p';
+        }
+
+        //To use this password, it will need salted.
+        int salt = new SecureRandom().nextInt();
+
+        byte[] hashedVersionOfNewPassword = saltAndHashPassword(newPasswordByteArray, salt);
 
         //Save hashed version to file. Try this first in case there is an error and we can't continue. That way information is not lost in the accounts
         try
         {
-            BufferedWriter writer = new BufferedWriter(new FileWriter(filePathForPassword));
-            writer.write(Arrays.toString(hashedVersionOfPassword));
+            Files.write(Paths.get(filePathForPassword), Base64.getEncoder().encode(Integer.toString(salt).getBytes()));
+
+            BufferedWriter writer = new BufferedWriter(new FileWriter(filePathForPassword, true));
+            writer.write(Arrays.toString(hashedVersionOfNewPassword));
 
             //Update all accounts with the new password.
-            updateAllAccountsForNewPassword(inputPassword, oldPassword);
-        } catch (FileNotFoundException e) //Password file not found, at this point in the life cycle, this should not happen
-        {
-            createPasswordFile();
-        } catch (IOException e)
+            updateAllAccountsForNewPassword(newPasswordByteArray, oldPasswordByteArray);
+        } catch (IOException e) //This catch also handles 'FileNotFoundException'. Password file not found, at this point in the life cycle, this should not happen
         {
             System.out.println("Unexpected error occurred");
         }
@@ -540,7 +625,6 @@ public class Main
             String line;
             while ((line = reader.readLine()) != null)
             {
-                //TODO read in all the accounts, decrypt them, and then re-encrypt them
                 System.out.println("This is not implemented yet" + line + Arrays.toString(inputPassword) + Arrays.toString(oldPassword));
             }
 
@@ -707,7 +791,7 @@ public class Main
                 //Retrieve all accounts
                 case 2:
                     System.out.println("Print out all accounts");
-                    retrieveAllAccountsFromArray();
+                    retrieveAllAccounts();
                     break;
                 //Store new account
                 case 3:
