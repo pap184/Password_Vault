@@ -210,7 +210,7 @@ public class Main
 //        }
 //
 //        return encryptedAndEncoded;
-        return new byte[0];
+        return Base64.getEncoder().encode(message.getBytes());
     }
 
     /**
@@ -239,7 +239,7 @@ public class Main
 //        {
 //            e.printStackTrace();
 //        }
-        return "";
+        return Arrays.toString(Base64.getDecoder().decode(message));
     }
 
     /**
