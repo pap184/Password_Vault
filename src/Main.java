@@ -295,6 +295,7 @@ public class Main
     private static byte[] confirmPassword() throws FileNotFoundException
     {
         Console console = System.console();
+        Scanner scanner = new Scanner(System.in);
         for (int i = 0; i < 3; i++)
         {
             if (!Files.exists(Paths.get(filePathForPassword)))
@@ -303,7 +304,13 @@ public class Main
             }
 
             System.out.println("Please enter in the master password");
-            char[] password = console.readPassword();
+            char[] password;
+
+            //Console is null when run from within intellij debugger. Because of this, default to scanner if it doesnt find the console
+            if (console == null)
+                password = scanner.next().toCharArray();
+            else
+                password = console.readPassword();
 
             //Copy all of the bytes of characters into the byte array, act as a converter
             byte[] byteArrayOfPassword = new byte[password.length];
@@ -540,8 +547,14 @@ public class Main
         System.out.println("Enter in the old password");
 
         Console console = System.console();
+        Scanner scanner = new Scanner(System.in);
 
-        char[] oldPasswordCharArray = console.readPassword();
+        char[] oldPasswordCharArray;
+        //Console is null when run from within intellij debugger. Because of this, default to scanner if it doesnt find the console
+        if (console == null)
+            oldPasswordCharArray = scanner.next().toCharArray();
+        else
+            oldPasswordCharArray = console.readPassword();
 
         //Copy all of the bytes of characters into the byte array, act as a converter
         //This also will wipe the previous password char array
@@ -569,10 +582,18 @@ public class Main
 
         System.out.println("Enter new Master Password.");
         //Allow the password to be entered in while masked
-        char[] inputPasswordCharArray1 = console.readPassword();
+        char[] inputPasswordCharArray1;
+        if (console == null)
+            inputPasswordCharArray1 = scanner.next().toCharArray();
+        else
+            inputPasswordCharArray1 = console.readPassword();
 
         System.out.println("Reenter password to confirm");
-        char[] inputPasswordCharArray2 = console.readPassword();
+        char[] inputPasswordCharArray2;
+        if (console == null)
+            inputPasswordCharArray2 = scanner.next().toCharArray();
+        else
+            inputPasswordCharArray2 = console.readPassword();
 
         if (!Arrays.equals(inputPasswordCharArray1, inputPasswordCharArray2))
         {
