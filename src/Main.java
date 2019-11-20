@@ -1,10 +1,7 @@
 import javax.crypto.*;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
-import java.io.BufferedReader;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
@@ -13,16 +10,16 @@ import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
-import java.util.Comparator;
-import java.util.Random;
 import java.util.Scanner;
 
 //Members: Alex Hover Courtney Kaminski, Pavan Patel
 
 public class Main
 {
-    private static final String defaultPassword = "password";
+    private static final String defaultPassword = "";
     private static final int ACCOUNT = 0;
     private static final int USERNAME = 1;
     private static final int PASSWORD = 2;
@@ -115,17 +112,56 @@ public class Main
     }
 
     /**
+     * Salt and hash the password here
+     *
+     * @param base64EncodedPassword Base64 encoded version of the password
+     * @return The final result of salting and hashing the password.
+     */
+    //TODO Make this.
+    //What is the salt supposed to be?
+    public static byte[] saltAndHashPassword(byte[] base64EncodedPassword)
+    {
+        return null;
+    }
+
+    /**
+     * Create a file that will contain the password. The password saved should be encrypted and encoded so you can't just open the file to see what the password is.
+     * This should ONLY be run if the file does not yet exist, as it will overwrite the existing file, resetting the password to the default.
+     * If this is run, it will invalidate all of the existing accounts in the file, because of that, it will remove the accounts file
+     * <p>
+     * To determine what the password is, it must securely prompt the user to input the password
+     */
+    //TODO Add the masked input thing into this
+    //By default the default password is blank, and the user MUST change this before entering in new accounts, so this should be fine
+    private static void createPasswordFile()
+    {
+        try
+        {
+            byte[] password = Base64.getEncoder().encode("PASSWORD".getBytes());
+
+            Files.write(Paths.get(filePathForPassword), saltAndHashPassword(password));
+
+            Files.delete(Paths.get(filePathForAccounts));
+        } catch (IOException e)
+        {
+            e.printStackTrace();
+        }
+    }
+
+    /**
      * Encrypt and encode a given message. This will use the already initialized ciphers to encrypt the message.
      *
      * @param message The string that should be encrypted. The format should be 'salt:Username Password' where the salt is the account name.
-     * @return Byte[] after the message was encrypted and then encoded using Base64 standard
+     * @return byte[] after the message was encrypted and then encoded using Base64 standard. This is only the cipher text
      */
     //TODO Password based encryption
-    private static byte[] encryptAndEncodeMessage(String message)
+    private static byte[] encryptAndEncodeAccountInformation(String message)
     {
         byte[] encryptedAndEncoded = new byte[0];
         try
         {
+            //message is already formatted in the salted and correct way. All we need is the password based encryption
+
             encryptedAndEncoded = encryptionCipher.doFinal(message.getBytes(StandardCharsets.UTF_8));
             encryptedAndEncoded = Base64.getEncoder().encode(encryptedAndEncoded);
         } catch (BadPaddingException | IllegalBlockSizeException e)
@@ -140,15 +176,23 @@ public class Main
      * Decode and Decrypt a byte array into a string using the previously initialized ciphers
      *
      * @param message Format is as follows. 'salt:[base64 encoded encryption]'. The salt is in front, followed by a semicolon, and then the message that was encrypted.
-     * @return The string that was returned by our ciphers
+     * @return The string that was contained fully in the cipher. Should be returned in format 'account:username password'
      */
     //TODO Password based encryption
     private static String decryptAndDecodeAccounts(String message)
     {
         try
         {
-            byte[] decodedMessage = Base64.getDecoder().decode(byteArrayOfMessage);
-            return new String(decryptionCipher.doFinal(decodedMessage), StandardCharsets.UTF_8);
+            //Break apart the message into the different parts
+            String messageToBeDecrypted = message.substring(message.indexOf(':') + 1);
+
+            byte[] decodedMessageToBeDecrypted = Base64.getDecoder().decode(messageToBeDecrypted.getBytes());
+
+            //TODO Decrypt it correctly - Password based encryption
+            String decryptedInformation = Arrays.toString(decryptionCipher.doFinal(decodedMessageToBeDecrypted));
+
+            //Should be
+            return decryptedInformation;
 
         } catch (BadPaddingException | IllegalBlockSizeException e)
         {
@@ -165,44 +209,50 @@ public class Main
     {
         try
         {
+            System.out.println("No account file exists, an empty one is being created for you");
             Files.write(Paths.get(filePathForAccounts), Base64.getEncoder().encode("".getBytes()));
         } catch (IOException e)
         {
-            e.printStackTrace();
+            System.out.println("Unexpected error occurred");
         }
-    }
-
-    /**
-     * Create a file that will contain the password. The password saved should be encrypted and encoded so you can't just open the file to see what the password is.
-     * This should only be run if the file does not yet exist, as it will overwrite the existing file, resetting the password to the default.
-     *
-     * @return String of what the password defaults too, in case it is different.
-     */
-    //TODO Password should be hashed
-    private static String createPasswordFile()
-    {
-        try
-        {
-            Files.write(Paths.get(filePathForPassword), encryptAndEncodeMessage(defaultPassword));
-        } catch (IOException e)
-        {
-            e.printStackTrace();
-        }
-
-        return defaultPassword;
     }
 
     /**
      * Will compare the password that was passed into the method with the password that is hashed and stored on the file.
-     * @param passwordEntered base64 encoding of the password that was entered.
+     * The method should prompt the user to input the master password, and then should mask the password as it is being typed in
+     *
      * @return boolean for if the password matches
      */
-    //TODO write this
+    //TODO write this, use the password input thing from console.
     //it needs to hash and check and yeah man
-    private static boolean confirmPassword(byte[] passwordEntered)
+    //If the password is wrong it should loop and ask again. maybe 3 tries before closing program?
+    //Right now i have the logic set up in other methods saying that it should only continue if it returns true, but it is technically more secure if it crashes after a few wrong answers.
+    //Maybe make it self destruct and delete password file, making the accounts unrecoverable if there are too many guesses, to add to security? - I dont care, just an idea
+    //Who ever finishes this, its your call
+    //I do know, that because of IO errors it does have to fail closed, not open so be aware of that vulnerability
+    private static boolean confirmPassword() throws FileNotFoundException
     {
-        return true;
+        try
+        {
+            //If the password file is not found, then it will throw an error back.
+            //This should only be thrown if this is called by the "logInAtProgramLaunch" as it should be impossible to pass that method without the file existing
+            BufferedReader reader = new BufferedReader(new FileReader(filePathForPassword));
+            byte[] hashedVersionOfSavedPasswordOnFile = Base64.getEncoder().encode(reader.readLine().getBytes());
+
+            byte[] enteredPassword = Base64.getEncoder().encode("PASSWORD".getBytes());
+
+            if (Arrays.equals(enteredPassword, hashedVersionOfSavedPasswordOnFile))
+            {
+                System.out.println("Password matches, continuing");
+                return true;
+            }
+        } catch (IOException e)
+        {
+            System.out.println("Unexpected Error");
+        }
+        return false;
     }
+
 
     /**
      * Return specific account information. This will prompt user for their password as that will be required as part of the decryption scheme to find the username and password.
@@ -214,76 +264,45 @@ public class Main
     {
         try
         {
-            BufferedReader accountsFile = new BufferedReader(new FileReader(filePathForAccounts));
-
-            String line;
-            while ((line = accountsFile.readLine()) != null)
+            if (confirmPassword())
             {
-                if (line.contains(accountWeAreLookingFor))
+                try
                 {
+                    BufferedReader accountsFile = new BufferedReader(new FileReader(filePathForAccounts));
 
-                    return line.substring(0, line.indexOf(' ')) + decryptAndDecodeAccounts(line);
+                    String line;
+                    while ((line = accountsFile.readLine()) != null)
+                    {
+                        if (line.contains(accountWeAreLookingFor))
+                        {
+                            return decryptAndDecodeAccounts(line);
+                        }
+                    }
+                } catch (FileNotFoundException e) //Not find account file
+                {
+                    createAccountsFile();
+                } catch (IOException e)
+                {
+                    System.out.println("Unexpected error occurred");
                 }
             }
-
-        } catch (FileNotFoundException e)
+        } catch (FileNotFoundException e) //Error from confirm password, not find password file
         {
-            e.printStackTrace();
-        } catch (IOException e)
-        {
-            e.printStackTrace();
-        }
-
-        return "Account could not be found.";
-    }
-
-    /**
-     * Return master password that is currently saved.
-     *
-     * @return String of password that is saved
-     */
-    //TODO This is really dumb, get rid of this
-    private static String pullMasterPassword()
-    {
-        try
-        {
-            return decryptAndDecode(Files.readAllBytes(Paths.get(filePathForPassword)));
-
-        } catch (NoSuchFileException e)
-        {
-            System.out.println("Files not found when trying to pull master password");
-            System.out.println("Files are being generated");
-
-            createAccountsFile();
-            return createPasswordFile();
-        } catch (IOException e)
-        {
-            System.out.println("Unknown other error");
-            e.printStackTrace();
+            System.out.println("Unexpected error occurred");
         }
 
         return null;
     }
 
     /**
-     * Save master password to file.
-     *
-     * @param masterPassword String that the password should be changed too
+     * Print out all of the information about all of the accounts.
      */
-    //TODO Password based encryption
-    private static void updateMasterPassword(String masterPassword)
+    //TODO Account information from file
+    private static String retrieveAllAccountsFromArray()
     {
-        try
+        for (int i = 0; i < accounts.size(); i++)
         {
-            Files.write(Paths.get(filePathForPassword), encryptAndEncodeMessage(masterPassword));
-
-        } catch (FileNotFoundException e)
-        {
-            System.out.println("File not found in save password to file function. This is a problem, because it should have already been read from.");
-            e.printStackTrace();
-        } catch (IOException e)
-        {
-            e.printStackTrace();
+            printAccountInfo(i);
         }
     }
 
@@ -291,23 +310,34 @@ public class Main
      * Save all accounts that are saved in to account arraylist to the file.
      * All of accounts are appended into a long single string, with each account on a seperate line
      * This string is then encrypted+encoded and written to the file.
+     *
+     * @param account  Name of account to add
+     * @param username The username of the account
+     * @param password The password of the account
      */
-    //TODO Accounts should be kept on the file permanently.
     private static void saveNewAccountToFile(String account, String username, String password)
     {
         try
         {
+            if (confirmPassword())
+            {
+                try
+                {
+                    BufferedWriter writer = new BufferedWriter(new FileWriter(filePathForAccounts, true));
 
-
-            Files.write(Paths.get(filePathForAccounts), encryptAndEncodeMessage(fullListOfAccounts.toString()));
-
-        } catch (FileNotFoundException e)
+                    writer.write(account + ":" + Arrays.toString(encryptAndEncodeAccountInformation(account + ":" + username + " " + password)));
+                } catch (FileNotFoundException e) //Not find account file
+                {
+                    createAccountsFile();
+                    saveNewAccountToFile(account, username, password);
+                } catch (IOException e)
+                {
+                    System.out.println("Unexpected error occurred");
+                }
+            }
+        } catch (FileNotFoundException e) //Error from confirm password, not find password file
         {
-            System.out.println("File not found in save to file function. This is a problem, because it should have already been read from.");
-            e.printStackTrace();
-        } catch (IOException e)
-        {
-            e.printStackTrace();
+            System.out.println("Unexpected error occurred");
         }
     }
 
@@ -317,7 +347,6 @@ public class Main
      * @param lengthOfPassword length of password to generate
      * @return The password that was securely generated.
      */
-    //TODO Should not be kept in memory
     private static String generateRandomPass(int lengthOfPassword)
     {
         /*
@@ -374,7 +403,7 @@ public class Main
             if (i == arrayOfRandomBytes.length - 1)
             {
                 i = 0;
-                new Random().nextBytes(arrayOfRandomBytes);
+                new SecureRandom().nextBytes(arrayOfRandomBytes);
             }
         }
 
@@ -382,331 +411,306 @@ public class Main
     }
 
     /**
-     * Clear account file
-     * I dont know why this exists anymore
+     * On program launch, this method should initially confirm the password to launch the program
+     * If a password does not yet exist, set a password for
      */
-    //TODO remove this too
-    private static void emptyFile()
+    private static void logInAtProgramLaunch()
     {
         try
         {
-            Files.write(Paths.get(filePathForAccounts), encryptAndEncodeMessage(""));
+            confirmPassword();
 
-        } catch (FileNotFoundException e)
+        } catch (FileNotFoundException e) //Password file not found
         {
-            System.out.println("File not found exception. This shouldn't happen");
-            e.printStackTrace();
-        } catch (IOException e)
-        {
-            e.printStackTrace();
-        }
-    }
-
-    /**
-     * Verify master password is correct
-     *
-     * @param input scanner that the user will type in the password with
-     */
-    //TODO Information should not persist in memory
-    //TODO This will need to reauthenticate every time
-    private static void logIn(Scanner input)
-    {
-        String masterPassword = pullMasterPassword();
-
-        //Program Start
-        //Login
-        System.out.println("Please enter the Master Password");
-        String userPass = input.next();
-
-        while (true)
-        {
-            if (userPass.equals(masterPassword))
-            {
-                break;
-            } else
-            {
-                System.out.println("Error!");
-                System.out.println("Please enter the Master Password.");
-                userPass = input.next();
-            }
-        }
-
-        if (masterPassword.equals(defaultPassword))
-        {
-            System.out.println("This is the default password, and you must change this password.");
-            changeMasterPassword(input, true);
+            System.out.println("You must set a password");
+            createPasswordFile();
         }
     }
 
     /**
      * Allow the master password to be changed securely
-     *
-     * @param input        Scanner the user inputs too
-     * @param forcedChange If the user has to change it
+     * This is run if there already exists a password, and there may exist accounts on the file using that password to encrypt them.
+     * If there already are accounts saved, then it will need to update and change all of those accounts to be saved with the new passwords
      */
-    //TODO Password based encryption, will need to interact with accounts file if password changes
-    private static void changeMasterPassword(Scanner input, boolean forcedChange)
+    //TODO Password based encryption,
+    // will need to interact with accounts file if password changes
+    //TODO Mask the user input
+    private static void changeMasterPassword()
     {
-        //Prompt user to change password.
-        //The user is required to change the password if the password is the default password
+        System.out.println("Enter in the old password");
 
-        //Master Password change
-        if (!forcedChange)
+        //TODO mask input for old password
+        byte[] oldPassword = defaultPassword.getBytes();
+
+        //Check the old password to see if it matches.
+        try
         {
-            System.out.println("Enter Y to change the master password or N to not.");
-
-            if (input.next().equals("Y") || input.next().equals("y"))
+            if (!Arrays.equals(oldPassword, Files.readString(Paths.get(filePathForPassword)).getBytes()))
             {
-                System.out.println("Enter new Master Password.");
-                updateMasterPassword(input.next());
-                System.out.println("New Master Password saved.");
+                System.out.println("password does not match");
             }
-        } else
+            //Password does not match so do something about that
+
+        } catch (IOException e)
         {
-            System.out.println("Enter new Master Password.");
-            updateMasterPassword(input.next());
-            System.out.println("New Master Password saved.");
+            e.printStackTrace();
         }
+
+
+        System.out.println("Enter new Master Password.");
+
+        //Allow the password to be entered in while masked
+        //for now, im going to use just the default. This needs changed
+        byte[] inputPassword = defaultPassword.getBytes();
+
+        System.out.println("Reenter password to confirm");
+
+        //TODO new password entry that is masked
+
+        //check if the input password matches.
+        if (!Arrays.equals(inputPassword, defaultPassword.getBytes()))
+        {
+            System.out.println("Passwords do not match");
+            changeMasterPassword();
+        }
+
+        byte[] hashedVersionOfPassword = saltAndHashPassword(inputPassword);
+
+        //Save hashed version to file. Try this first in case there is an error and we can't continue. That way information is not lost in the accounts
+        try
+        {
+            BufferedWriter writer = new BufferedWriter(new FileWriter(filePathForPassword));
+            writer.write(Arrays.toString(hashedVersionOfPassword));
+
+            //Update all accounts with the new password.
+            updateAllAccountsForNewPassword(inputPassword, oldPassword);
+        } catch (FileNotFoundException e) //Password file not found, at this point in the life cycle, this should not happen
+        {
+            createPasswordFile();
+        } catch (IOException e)
+        {
+            System.out.println("Unexpected error occurred");
+        }
+
+
+        System.out.println("New Master Password saved.");
     }
 
-    /**
-     * Find account index in the accounts arraylist
-     * @param accountWeAreLookingFor The name of the account searched for
-     * @return The index the account exists at
-     */
-    private static int findAccountIndexFromUserInput(String accountWeAreLookingFor)
+    private static void updateAllAccountsForNewPassword(byte[] inputPassword, byte[] oldPassword)
     {
-        for (int i = 0; i < accounts.size(); i++)
+        String fullListOfEncryptedAccounts = "";
+        try
         {
-            if (accountWeAreLookingFor.toLowerCase().equals(accounts.get(i)[0].toLowerCase()))
+            BufferedReader reader = new BufferedReader(new FileReader(filePathForAccounts));
+
+            String line;
+            while ((line = reader.readLine()) != null)
             {
-                System.out.println("Account found\n");
-                return i;
+                //TODO read in all the accounts, decrypt them, and then re-encrypt them
+                System.out.println("This is not implemented yet" + line + Arrays.toString(inputPassword) + Arrays.toString(oldPassword));
             }
-        }
 
-        System.out.println("Error, account could not be found.");
-        return -1;
-    }
-
-    /**
-     * Pull information about a single account
-     *
-     * @param input Scanner that the user will type in their account they want
-     */
-    //TODO Account information persists on file now
-    private static void retrieveSingleAccountInfoFromArray(Scanner input)
-    {
-        System.out.println("Please enter the name of the account that you want to access");
-        String accountWeAreLookingFor = input.next();
-
-        int indexOfAccount = findAccountIndexFromUserInput(accountWeAreLookingFor);
-
-        if (!(indexOfAccount < 0))
+            //Save the full list of encrypted accounts back onto the file
+            Files.write(Paths.get(filePathForAccounts), fullListOfEncryptedAccounts.getBytes());
+        } catch (FileNotFoundException e)
         {
-            printAccountInfo(indexOfAccount);
-        }
-    }
-
-    /**
-     * Print out all of the information about all of the accounts.
-     */
-    //TODO Account information from file
-    private static void retrieveAllAccountsFromArray()
-    {
-        for (int i = 0; i < accounts.size(); i++)
+            createAccountsFile();
+        } catch (IOException e)
         {
-            printAccountInfo(i);
+            System.out.println("Unexpected error occurred");
         }
     }
 
     /**
-     * Print out the information about the actual account.
+     * Print out the information about the actual account. All this does is change the formatting of the string
      *
-     * @param accountIndex Index that the account exists at.
+     * @param accountInfo String of account info, will match the formatting style of 'account:username password' at this point.
      */
-    //TODO Account information exists in file system
-    private static void printAccountInfo(int accountIndex)
+    private static void printAccountInfo(String accountInfo)
     {
-        System.out.println("Account name: " + accounts.get(accountIndex)[ACCOUNT]);
-        System.out.println("     Account Username: " + accounts.get(accountIndex)[USERNAME]);
-        System.out.println("     Account Password: " + accounts.get(accountIndex)[PASSWORD]);
+        if (accountInfo == null)
+        {
+            return;
+        }
+
+        System.out.println("Account name: " + accountInfo.substring(0, accountInfo.indexOf(':')));
+        System.out.println("     Account Username: " + accountInfo.substring(accountInfo.indexOf(':') + 1, accountInfo.indexOf(' ')));
+        System.out.println("     Account Password: " + accountInfo.substring(accountInfo.indexOf(' ') + 1));
         System.out.println();
     }
 
     /**
-     * get the specific string[] that contains information about the account
-     *
-     * @param accountIndex index that the account exists in
-     * @return string[] that the account information is in
-     */
-    //TODO This is dumb too. Get rid of this
-    private static String[] getAccount(int accountIndex)
-    {
-        return accounts.get(accountIndex);
-    }
-
-    /**
      * Create new account that will be saved in the file.
-     * @param input Scanner the user inputs their choices into
      */
-    //TODO Accounts on file
-    private static void storeNewAccount(Scanner input)
+    private static void storeNewAccount()
     {
-        String[] newAccountInformation = new String[3];
+        Scanner input = new Scanner(System.in);
 
         System.out.println("Enter the new account id");
-        newAccountInformation[ACCOUNT] = input.next();
+        String account = input.next();
 
         System.out.println("Enter the new account username");
-        newAccountInformation[USERNAME] = input.next();
+        String username = input.next();
 
         System.out.println("Type Y to enter a custom password or N for a random one.");
         String userChoice = input.next();
+        String password;
 
         if (userChoice.equals("Y") || userChoice.equals("y"))
         {
             System.out.println("Enter custom password");
-            newAccountInformation[PASSWORD] = input.next();
-        } else
+            password = input.next();
+        }
+        else
         {
+            System.out.println("What length password to generate? Suggested length of 10. Please only enter in an integer above the length of 0.");
+            password = generateRandomPass(input.nextInt());
             System.out.println("Generating a new password");
-            newAccountInformation[PASSWORD] = generateRandomPass(10);
             System.out.println("Finished generating");
         }
 
-        accounts.add(newAccountInformation);
-
-        accounts.sort(Comparator.comparing(o -> o[0]));
-
-        saveAccountsToFile();
+        saveNewAccountToFile(account, username, password);
     }
 
     /**
      * Allow an account to have its information changed.
-     * @param input scanner for user input
      */
-    //TODO Accounts on file.
-    private static void updateAccount(Scanner input)
+    private static void updateAccount()
     {
-        System.out.println("Please enter in the name of the account you are looking for. ");
-        String userChoice = input.next();
+        Scanner input = new Scanner(System.in);
 
-        int accountIndex = findAccountIndexFromUserInput(userChoice);
+        System.out.println("Please enter in the name of the account you are looking to change. ");
+        String nameOfAccount = input.next();
 
-        if (!(accountIndex < 0))
+        String fullAccountInfo = returnAccountInfo(nameOfAccount);
+
+        if (fullAccountInfo == null)
         {
-            String[] accountInfo = getAccount(accountIndex);
-
-            //Print out account information
-            System.out.println("Current account name: " + accountInfo[ACCOUNT]);
-            System.out.println("Current User name: " + accountInfo[USERNAME]);
-            System.out.println("Current Password: " + accountInfo[PASSWORD]);
-
-            System.out.println();
-
-            System.out.println("Enter a new Account Name: ");
-            accountInfo[ACCOUNT] = input.next();
-            System.out.println("Enter a new Username: ");
-            accountInfo[USERNAME] = input.next();
-            System.out.println("Enter a new password: ");
-            accountInfo[PASSWORD] = input.next();
+            System.out.println("Unable to continue");
+            return;
         }
 
-        saveAccountsToFile();
+        //Separate out the account information into the pieces
+        String account = fullAccountInfo.substring(0, fullAccountInfo.indexOf(':'));
+        String username = fullAccountInfo.substring(fullAccountInfo.indexOf(':') + 1, fullAccountInfo.indexOf(' '));
+        String password = fullAccountInfo.substring(fullAccountInfo.indexOf(' ') + 1);
+
+        //Print out account information
+        System.out.println("Current account name: " + account);
+        System.out.println("Current User name: " + username);
+        System.out.println("Current Password: " + password);
+
+        System.out.println();
+
+        //Delete current entry for the account
+        deleteAccount(account);
+        //Create new entry for the updated account
+        storeNewAccount();
     }
 
     /**
      * Allow user to remove account.
-     * @param input Scanner for user input
+     * This method works by opening a temp list, and copying all of the contents of the accounts file into it
+     * After that, it will flush the original file, and copy all of the accounts back into the original file except for the one to delete
+     *
+     * @param accountToRemove Scanner for user input
      */
-    //TODO Accounts on file.
-    private static void deleteAccount(Scanner input)
+    private static void deleteAccount(String accountToRemove)
     {
-        System.out.println("Please enter in the name of the account you are looking for. ");
-        String userChoice = input.next();
-
-        int accountIndex = findAccountIndexFromUserInput(userChoice);
-
-        if (!(accountIndex < 0))
+        try
         {
-            printAccountInfo(accountIndex);
+            //First copy all of the contents into a temporary system.
+            BufferedReader reader = new BufferedReader(new FileReader(filePathForAccounts));
 
-            System.out.println();
+            ArrayList<String> accounts = new ArrayList<>();
 
-            accounts.remove(accountIndex);
+            String line;
+            while ((line = reader.readLine()) != null)
+            {
+                if (!line.substring(line.indexOf(':')).equals(accountToRemove))
+                {
+                    accounts.add(line);
+                }
+            }
 
-            System.out.println("Account Deleted.");
+            Files.write(Paths.get(filePathForAccounts), "".getBytes());
+
+            //Now write all of the lines back into it
+            BufferedWriter writer = new BufferedWriter(new FileWriter(filePathForAccounts, true));
+            for (String account : accounts)
+            {
+                writer.write(account);
+            }
+        } catch (FileNotFoundException e)
+        {
+            System.out.println("No account file exists, please enter an account first");
+        } catch (IOException e)
+        {
+            System.out.println("Unexpected error occurred");
         }
-
-        saveAccountsToFile();
     }
 
     /**
      * Main loop that the program exists in. This loops and allows the user many choices to allow the user to interact with the program.
-     * @param input scanner for user input
      */
-    private static void mainLoop(Scanner input)
+    private static void mainLoop()
     {
+        Scanner input = new Scanner(System.in);
+
         //Program actions
         while (true)
         {
             System.out.println("Would do you want to do? Type 1 to retrieve a single account, \n" + "2 to retrieve a list of all accounts stored, \n" + "3 to store a new account, \n" + "4 to update an account, \n" + "5 to delete an account, \n" + "6 to change master password, \n" + "or anything else to exit.");
 
-            String actions = input.next();
+            int actions = input.nextInt();
             switch (actions)
             {
                 //Retrieve single account
-                case "1":
+                case 1:
                     System.out.println("Print out a single account");
-                    retrieveSingleAccountInfoFromArray(input);
+                    System.out.println("Enter the name of the account to find");
+                    printAccountInfo(returnAccountInfo(input.nextLine()));
                     break;
                 //Retrieve all accounts
-                case "2":
+                case 2:
                     System.out.println("Print out all accounts");
                     retrieveAllAccountsFromArray();
                     break;
                 //Store new account
-                case "3":
+                case 3:
                     System.out.println("Store new account");
-                    storeNewAccount(input);
+                    storeNewAccount();
                     break;
                 //Update or delete accounts
-                case "4":
-                    System.out.println("Update an account");
-                    updateAccount(input);
+                case 4:
+                    System.out.println("Update account");
+                    updateAccount();
                     break;
                 //Delete Account
-                case "5":
-                    System.out.println("Delete an account");
-                    deleteAccount(input);
+                case 5:
+                    System.out.println("Delete account");
+                    System.out.println("Enter the name of the account to delete");
+                    deleteAccount(input.nextLine());
                     break;
                 //Change master password
-                case "6":
+                case 6:
                     System.out.println("Changing master password");
-                    changeMasterPassword(input, false);
+                    changeMasterPassword();
                     break;
                 //Exit
                 default:
                     return;
             }
-
-            saveAccountsToFile();
         }
     }
 
     // Initialize and launch program
     public static void main(String[] args)
     {
-        //Scanner used to parse user input
-        Scanner input = new Scanner(System.in);
-
         initPrivateKeyAndIV();
 
-        logIn(input);
+        logInAtProgramLaunch();
 
-        readAccountsFromFile();
-
-        mainLoop(input);
+        mainLoop();
     }
 }
