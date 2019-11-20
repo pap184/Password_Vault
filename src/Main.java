@@ -6,10 +6,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Paths;
-import java.security.InvalidAlgorithmParameterException;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
+import java.security.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
@@ -118,10 +115,25 @@ public class Main
      * @return The final result of salting and hashing the password.
      */
     //TODO Make this.
-    //What is the salt supposed to be?
-    public static byte[] saltAndHashPassword(byte[] base64EncodedPassword)
+    private static byte[] saltAndHashPassword(byte[] base64EncodedPassword, int salt)
     {
-        return null;
+        //First prepend the password with the salt.
+        byte[] saltBytes = Integer.toString(salt).getBytes();
+        byte[] saltedPassword = new byte[base64EncodedPassword.length + saltBytes.length];
+
+        for (int i = 0; i < saltedPassword.length; i++)
+        {
+            if (i < base64EncodedPassword.length)
+            {
+                saltedPassword[i] = saltBytes[i];
+            } else
+            {
+                saltedPassword[i] = base64EncodedPassword[i - saltBytes.length];
+            }
+        }
+
+        MessageDigest md
+        //TODO Use sha to hash that, and finish making the password file, then check the change password method to make sure that makes sense still
     }
 
     /**
@@ -137,9 +149,15 @@ public class Main
     {
         try
         {
-            byte[] password = Base64.getEncoder().encode("PASSWORD".getBytes());
+            BufferedWriter writer = new BufferedWriter(new FileWriter(filePathForPassword, true));
 
-            Files.write(Paths.get(filePathForPassword), saltAndHashPassword(password));
+            byte[] password = Base64.getEncoder().encode(defaultPassword.getBytes());
+
+            int salt = new SecureRandom().nextInt();
+
+            writer.write(salt);
+
+            writer.write(Arrays.toString(saltAndHashPassword(password, salt)));
 
             Files.delete(Paths.get(filePathForAccounts));
         } catch (IOException e)
@@ -230,16 +248,19 @@ public class Main
     //Maybe make it self destruct and delete password file, making the accounts unrecoverable if there are too many guesses, to add to security? - I dont care, just an idea
     //Who ever finishes this, its your call
     //I do know, that because of IO errors it does have to fail closed, not open so be aware of that vulnerability
-    private static boolean confirmPassword() throws FileNotFoundException
+    private static boolean confirmPassword(String password) throws FileNotFoundException
     {
         try
         {
             //If the password file is not found, then it will throw an error back.
             //This should only be thrown if this is called by the "logInAtProgramLaunch" as it should be impossible to pass that method without the file existing
             BufferedReader reader = new BufferedReader(new FileReader(filePathForPassword));
+
+            //Pull hash off of the file to compare.
             byte[] hashedVersionOfSavedPasswordOnFile = Base64.getEncoder().encode(reader.readLine().getBytes());
 
-            byte[] enteredPassword = Base64.getEncoder().encode("PASSWORD".getBytes());
+
+            byte[] enteredPassword = Base64.getEncoder().encode(password.getBytes());
 
             if (Arrays.equals(enteredPassword, hashedVersionOfSavedPasswordOnFile))
             {
@@ -251,6 +272,31 @@ public class Main
             System.out.println("Unexpected Error");
         }
         return false;
+    }
+
+    private static boolean confirmPassword() throws FileNotFoundException
+    {
+        for (int i = 0; i < 3; i++)
+        {
+            System.out.println("Please enter in the master password");
+            if (confirmPassword(new Scanner(System.in).next()))
+                return true;
+            System.out.println("Not correct");
+        }
+
+        System.out.println("Password not authenticated");
+        return false;
+    }
+
+    /**
+     * Print out all of the information about all of the accounts.
+     */
+    //TODO Account information from file
+    private static void retrieveAllAccountsFromArray()
+    {
+        Scanner input = new Scanner(System.in);
+
+
     }
 
 
@@ -292,18 +338,6 @@ public class Main
         }
 
         return null;
-    }
-
-    /**
-     * Print out all of the information about all of the accounts.
-     */
-    //TODO Account information from file
-    private static String retrieveAllAccountsFromArray()
-    {
-        for (int i = 0; i < accounts.size(); i++)
-        {
-            printAccountInfo(i);
-        }
     }
 
     /**
@@ -560,8 +594,7 @@ public class Main
         {
             System.out.println("Enter custom password");
             password = input.next();
-        }
-        else
+        } else
         {
             System.out.println("What length password to generate? Suggested length of 10. Please only enter in an integer above the length of 0.");
             password = generateRandomPass(input.nextInt());
