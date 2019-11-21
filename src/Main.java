@@ -25,6 +25,7 @@ public class Main
 
     private static String filePathForPassword = "Files\\Password.txt";
     private static String filePathForAccounts = "Files\\Accounts.txt";
+    private static String filePathForCaCert = "Files\\CaCert.txt";
     private static String filePathForIV = "Files\\IV.dat";
     private static String filePathForKey = "Files\\Key.dat";
 
@@ -861,6 +862,67 @@ public class Main
         }
     }
 
+    private static void shareAccount(String accountInfo)
+    {
+        Scanner scanner = new Scanner(System.in);
+        boolean check = false;
+
+        try
+        {
+            //First copy all of the contents into a temporary system.
+            BufferedReader certification = new BufferedReader(new FileReader(filePathForCaCert));
+
+            ArrayList<String> accounts = new ArrayList<>();
+
+            String line;
+            while ((line = certification.readLine()) != null)
+            {
+                accounts.add(line);
+            }
+
+            if (accountInfo == null)
+            {
+                return;
+            }
+            else
+            {
+                System.out.println("Please enter your Certification.");
+                String cert = scanner.nextLine();
+                for (int i = 0; i < accounts.size(); i++)
+                {
+                    if(cert.equals(accounts.get(i)))
+                        check = true;
+                }
+            }
+
+            if(check == false)
+            {
+                return;
+            }
+
+
+            System.out.println("Account name: " + accountInfo.substring(0, accountInfo.indexOf(':')));
+            System.out.println("     Account Username: " + accountInfo.substring(accountInfo.indexOf(':') + 1, accountInfo.indexOf(' ')));
+            System.out.println("     Account Password: " + accountInfo.substring(accountInfo.indexOf(' ') + 1));
+            System.out.println();
+
+            Files.write(Paths.get(filePathForCaCert), "".getBytes());
+
+            //Now write all of the lines back into it
+            BufferedWriter writer = new BufferedWriter(new FileWriter(filePathForCaCert, true));
+            for (String account : accounts)
+            {
+                writer.write(account);
+            }
+        } catch (FileNotFoundException e)
+        {
+            System.out.println("No account file exists, please enter an account first");
+        } catch (IOException e)
+        {
+            System.out.println("Unexpected error occurred");
+        }
+    }
+
     /**
      * Main loop that the program exists in. This loops and allows the user many choices to allow the user to interact with the program.
      */
@@ -907,6 +969,10 @@ public class Main
                 case 6:
                     System.out.println("Changing master password");
                     changeMasterPassword();
+                    break;
+                case 7:
+                    System.out.println("Sharing Account");
+                    shareAccount(returnAccountInfo(input.nextLine()));
                     break;
                 //Exit
                 default:
