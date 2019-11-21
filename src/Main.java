@@ -1,5 +1,4 @@
 import javax.crypto.*;
-import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.PBEKeySpec;
 import javax.crypto.spec.SecretKeySpec;
@@ -24,8 +23,8 @@ public class Main
 {
     private static final String defaultPassword = "";
 
-    private static String filePathForPassword = "Files\\Password.dat";
-    private static String filePathForAccounts = "Files\\Accounts.dat";
+    private static String filePathForPassword = "Files\\Password.txt";
+    private static String filePathForAccounts = "Files\\Accounts.txt";
     private static String filePathForIV = "Files\\IV.dat";
     private static String filePathForKey = "Files\\Key.dat";
 
@@ -132,7 +131,7 @@ public class Main
 
         for (int i = 0; i < saltedPassword.length; i++)
         {
-            if (i < base64EncodedPassword.length)
+            if (i < saltBytes.length)
             {
                 saltedPassword[i] = saltBytes[i];
             } else
@@ -162,22 +161,48 @@ public class Main
     //By default the default password is blank, and the user MUST change this before entering in new accounts, so this should be fine
     private static void createPasswordFile()
     {
+        Console console = System.console();
+        Scanner scanner = new Scanner(System.in);
+
         try
         {
             BufferedWriter writer = new BufferedWriter(new FileWriter(filePathForPassword, true));
 
-            byte[] password = Base64.getEncoder().encode(defaultPassword.getBytes());
+            System.out.println("Please create a master password");
+            char[] passwordToSet;
+
+            //Console is null when run from within intellij debugger. Because of this, default to scanner if it doesnt find the console
+            if (console == null)
+                passwordToSet = scanner.next().toCharArray();
+            else
+                passwordToSet = console.readPassword();
+
+            //Copy all of the bytes of characters into the byte array, act as a converter
+            byte[] byteArrayOfPassword = new byte[passwordToSet.length];
+            for (int j = 0; j < byteArrayOfPassword.length; j++)
+            {
+                byteArrayOfPassword[j] = (byte) passwordToSet[j];
+            }
+
+            //Clear contents of password array.
+            Arrays.fill(passwordToSet, '0');
+
+
+            byte[] password = Base64.getEncoder().encode(byteArrayOfPassword);
 
             int salt = new SecureRandom().nextInt(256);
 
             writer.write(salt);
-            writer.write(Arrays.toString(saltAndHashPassword(password, salt)));
+            writer.write(saltAndHashPassword(password, salt).toString());
 
             //Delete the accounts file if it made it this far, because you can't access any of these accounts any more anyway
             Files.delete(Paths.get(filePathForAccounts));
+        } catch (NoSuchFileException e)
+        {
+            System.out.println("     Account file does not exist at this point yet");
         } catch (IOException e)
         {
-            e.printStackTrace();
+            System.out.println("Unexpected error occurred");
         }
     }
 
@@ -204,7 +229,8 @@ public class Main
      * @return byte[] after the message was encrypted and then encoded using Base64 standard. This is only the cipher text
      */
     //TODO Password based encryption
-    private static byte[] encryptAndEncodeAccountInformation(String message, byte[] password) throws BadPaddingException, IllegalBlockSizeException, NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeySpecException {
+    private static byte[] encryptAndEncodeAccountInformation(String message, byte[] password) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeySpecException
+    {
         Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
 
         byte[] cipherTextBytes = null;
@@ -290,15 +316,16 @@ public class Main
             //This should only be thrown if this is called by the "logInAtProgramLaunch" as it should be impossible to pass that method without the file existing
 
             //Skip salt line of file.
-            reader.readLine();
+            int salt = Integer.parseInt(reader.readLine());
 
             //Pull hash off of the file to compare.
-            byte[] hashedVersionOfSavedPasswordOnFile = Base64.getEncoder().encode(reader.readLine().getBytes());
+            String hashedVersionOfSavedPasswordOnFile = reader.readLine();
 
 
-            byte[] enteredPassword = Base64.getEncoder().encode(password);
+            byte[] passwordToTest = saltAndHashPassword(Base64.getEncoder().encode(password), salt);
 
-            if (Arrays.equals(enteredPassword, hashedVersionOfSavedPasswordOnFile))
+
+            if (passwordToTest.toString().equals(hashedVersionOfSavedPasswordOnFile))
             {
                 System.out.println("Password matches, continuing");
                 return true;
@@ -481,10 +508,6 @@ public class Main
                     e.printStackTrace();
                 } catch (NoSuchAlgorithmException e) {
                     System.out.println("Unexpected error occurred");
-                } catch (IllegalBlockSizeException e) {
-                    System.out.println("Unexpected error occurred");
-                } catch (BadPaddingException e) {
-                    System.out.println("Unexpected error occurred");
                 } catch (InvalidKeySpecException e) {
                     System.out.println("Unexpected error occurred");
                 }
@@ -568,17 +591,23 @@ public class Main
      * On program launch, this method should initially confirm the password to launch the program
      * If a password does not yet exist, set a password for
      */
-    private static void logInAtProgramLaunch()
+    private static boolean logInAtProgramLaunch()
     {
         try
         {
-            confirmPassword();
+            if (confirmPassword() != null)
+            {
+                return true;
+            }
 
         } catch (FileNotFoundException e) //Password file not found
         {
             System.out.println("You must set a password");
             createPasswordFile();
+            return true;
         }
+
+        return false;
     }
 
     /**
@@ -667,7 +696,7 @@ public class Main
             Files.write(Paths.get(filePathForPassword), Base64.getEncoder().encode(Integer.toString(salt).getBytes()));
 
             BufferedWriter writer = new BufferedWriter(new FileWriter(filePathForPassword, true));
-            writer.write(Arrays.toString(hashedVersionOfNewPassword));
+            writer.write('\n' + Arrays.toString(hashedVersionOfNewPassword));
 
             //Update all accounts with the new password.
             updateAllAccountsForNewPassword(newPasswordByteArray, oldPasswordByteArray);
@@ -889,10 +918,11 @@ public class Main
     // Initialize and launch program
     public static void main(String[] args)
     {
-        initPrivateKeyAndIV();
+//        initPrivateKeyAndIV();
 
-        logInAtProgramLaunch();
+        if (!logInAtProgramLaunch())
+            return;
 
-        mainLoop();
+//        mainLoop();
     }
 }
